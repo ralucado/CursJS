@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<head></head>
+<body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io()
+        socket.on('connect', function () {
+            socket.emit('hi', 42)
+        })
+        // socket.emit('move', { x: 40, y: 20 })
+    </script>
+</body>
+</html>
