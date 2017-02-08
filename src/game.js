@@ -1,24 +1,65 @@
 console.log('im game!')
 const kbd = require('@dasilvacontin/keyboard')
 const randomColor = require('randomcolor')
+const deepEqual = require('deep-equal')
+
 document.addEventListener('keydown', function (event) {
-    event.preventDefault()
+    // event.preventDefault()
 })
 
 const socket = io()
-const myPlayer = { x: 100, y: 100, color: randomColor() }
+const myPlayer = {
+    x: 100,
+    y: 100,
+    vx: 0,
+    vy: 0,
+    inputs: {
+        LEFT_ARROW: false,
+        RIGHT_ARROW: false,
+        UP_ARROW: false,
+        DOWN_ARROW: false
+    },
+    color: randomColor()
+}
 let myPlayerId = null
 
 // hash playerId => playerData
 let players = {}
 
-function logic () {
-    if (kbd.isKeyDown(kbd.LEFT_ARROW)) {
-        myPlayer.x--
-    } else if (kbd.isKeyDown(kbd.RIGHT_ARROW)) {
-        myPlayer.x++
+const ACCEL = 1 / 500
+
+function updateInputs () {
+    const { inputs } = myPlayer
+
+    for (let key in inputs) {
+        inputs[key] = kbd.isKeyDown(kbd[key])
     }
-    socket.emit('move', myPlayer)
+}
+
+function logic (delta) {
+    // JSON for two equal objects should be the same string
+    // const oldInputs = JSON.stringify(Object.assign({}, myPlayer.inputs))
+    const oldInputs = Object.assign({},  myPlayer.inputs)
+    updateInputs()
+
+    const vInc = ACCEL * delta
+    for (let playerId in players) {
+        const player = players[playerId]
+        const { inputs } = player
+        if (inputs.LEFT_ARROW) player.vx -= vInc
+        if (inputs.RIGHT_ARROW) player.vx += vInc
+        if (inputs.UP_ARROW) player.vy -= vInc
+        if (inputs.DOWN_ARROW) player.vy += vInc
+
+        player.x += player.vx * delta
+        player.y += player.vy * delta
+    }
+
+    myPlayer.timestamp = Date.now()
+
+    if (!deepEqual(myPlayer.inputs, oldInputs)) {
+        socket.emit('move', myPlayer)
+    }
 }
 
 const canvas = document.createElement('canvas')
@@ -42,9 +83,13 @@ function render () {
     }
 }
 
+let past = Date.now()
 function gameloop () {
     requestAnimationFrame(gameloop)
-    logic()
+    const now = Date.now()
+    const delta = now - past
+    past = now
+    logic(delta)
     render()
 }
 
